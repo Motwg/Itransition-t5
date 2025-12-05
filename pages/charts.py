@@ -18,11 +18,6 @@ class Charts(Page):
     @override
     def render(self) -> html.Div:
         return html.Div(
-            [
-                html.Div(id='live-update-text'),
-                dcc.Dropdown(['a', 'vav', 'vfff'], 'Canada', id='dropdown-selection')
-                if self.data is not None
-                else html.Div(),
-            ],
+            [],
             className='p-3 bg-light rounded-3',
         )

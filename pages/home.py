@@ -5,6 +5,7 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 from dash import Input, Output, State, callback, dcc, html
 
+from db import DB
 from layouts.rows import get_upper_row
 from pages.page import Page
 
@@ -14,17 +15,14 @@ from pages.page import Page
     [
         Input('mine-selection', 'value'),
         Input('detector-selection', 'value'),
-        Input('desc-table', 'rowData'),
-        State('data-table', 'rowData'),
     ],
 )
 def find_anomalies(
     mines: list[str],
     detectors: list[str],
-    desc: list[dict[str, Any]],
-    data: list[dict[str, Any]],
 ) -> dag.AgGrid:
-    x = pd.DataFrame(data)
+    db = DB()
+    x = db['mines']
     return dag.AgGrid(
         style={'height': 300},
         rowData=x.to_dict('records'),
@@ -45,17 +43,14 @@ def find_anomalies(
 
 
 class HomePage(Page):
-    desc: pd.DataFrame
-
     def __init__(self, path: str) -> None:
         super().__init__(path)
-        self.desc = pd.DataFrame()
 
     @override
     def render(self) -> html.Div:
         return html.Div(
             [
-                get_upper_row(self.data, self.desc),
+                get_upper_row(DB()['mines'], DB()['indicators']),
                 html.Hr(),
                 dbc.Row(
                     justify='evenly',
@@ -68,7 +63,7 @@ class HomePage(Page):
                                     gap=1,
                                     children=[
                                         dcc.Dropdown(
-                                            mines := list(self.desc['source']),
+                                            mines := list(DB()['indicators']['source']),
                                             mines,
                                             multi=True,
                                             closeOnSelect=False,
@@ -114,13 +109,3 @@ class HomePage(Page):
             ],
             className='p-3 bg-light rounded-3',
         )
-
-    @override
-    def update(self, data: pd.DataFrame) -> None:
-        super().update(data)
-        desc = data.loc[:, data.columns != 'Day'].describe().transpose()
-        desc['source'] = desc.index
-        cols = list(desc.columns)
-        self.desc = desc[cols[-1:] + cols[:-1]]
-        # z-score roznica w odchylenia
-        # def count_z_score(mean)

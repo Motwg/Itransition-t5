@@ -3,6 +3,7 @@ from dash import Dash, Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 
 from config import obs_config
+from db import DB
 from layouts.errors import er_404
 from layouts.sidebar import render_sidebar
 from layouts.styles import get_style

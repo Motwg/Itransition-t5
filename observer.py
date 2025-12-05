@@ -5,19 +5,13 @@ from typing import Self
 import gspread
 import pandas as pd
 
-
-class Singleton(type):
-    _instances: dict[type, type] = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+from db import DB
+from singleton import Singleton
 
 
 class Subscriber(ABC):
     @abstractmethod
-    def update(self, data: pd.DataFrame) -> None:
+    def update(self) -> None:
         pass
 
 
@@ -63,6 +57,15 @@ class DataObserver(metaclass=Singleton):
     def add_subscriber(self, sub: Subscriber) -> None:
         self.subscribers.append(sub)
 
+    def _read(self) -> pd.DataFrame:
+        data = self.sheet.get_all_values()
+        headers = data.pop(0)
+        mines = pd.DataFrame(data, columns=headers)
+        types = {c: pd.to_numeric for c in mines.columns if c != 'Day'}
+        for col, f in types.items():
+            mines[col] = f(mines[col])
+        return mines
+
     async def _loop(self) -> None:
         state = self.sheet.acell(self.indicator)
         while self.is_running:
@@ -72,11 +75,6 @@ class DataObserver(metaclass=Singleton):
                 await self._notify()
 
     async def _notify(self) -> None:
-        data = self.sheet.get_all_values()
-        headers = data.pop(0)
-        mines = pd.DataFrame(data, columns=headers)
-        types = {c: pd.to_numeric for c in mines.columns if c != 'Day'}
-        for col, f in types.items():
-            mines[col] = f(mines[col])
+        DB().update(self._read())
         for s in self.subscribers:
-            s.update(mines)
+            s.update()
