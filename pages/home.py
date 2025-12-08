@@ -1,45 +1,65 @@
 from typing import Any, override
 
-import dash_ag_grid as dag
-import dash_bootstrap_components as dbc
 import pandas as pd
+import plotly.graph_objects as go
 from dash import Input, Output, State, callback, dcc, html
 
+from config import pdf_config
 from db import DB
-from layouts.rows import get_upper_row
+from detectors import available_detectors
+from layouts.rows import get_bottom_row, get_upper_row
 from pages.page import Page
+from pdf.pdfcreator import PDFCreator
+from plots import available_plots
 
 
 @callback(
-    Output('anomalies', 'children'),
+    Output('download', 'data'),
+    [Input('to-pdf', 'n_clicks'), State('anomalies', 'figure')],
+    prevent_initial_call=True,
+)
+def to_pdf(_: int, fig_data: dict[str, Any]) -> dict[str, Any]:
+    writer = PDFCreator(pdf_config()['font'])
+    writer.add_title(pdf_config()['main_title'], size=pdf_config()['main_title_size'])
+    writer.add_title('Daily output')
+    writer.add_table(DB()['mines'])
+    writer.add_title('Summary')
+    writer.add_table(DB()['indicators'])
+    writer.add_title('Anomalies')
+    writer.add_figure(fig_data)
+    return dcc.send_bytes(writer.get_writer(), f'{pdf_config()["pdf_filename"]}.pdf')
+
+
+@callback(
+    Output('anomalies', 'figure'),
     [
         Input('mine-selection', 'value'),
         Input('detector-selection', 'value'),
-    ],
+        Input('chart-selection', 'value'),
+        Input('degree', 'value'),
+    ]
+    + [Input(f'parameter-{d.lower()}', 'value') for d in available_detectors()],
 )
 def find_anomalies(
     mines: list[str],
-    detectors: list[str],
-) -> dag.AgGrid:
-    db = DB()
-    x = db['mines']
-    return dag.AgGrid(
-        style={'height': 300},
-        rowData=x.to_dict('records'),
-        columnDefs=[
-            {
-                'field': i,
-                'type': 'rightAligned',
-                'width': 80,
-                'valueFormatter': {
-                    'function': "d3.format('(.2f')(params.value)",
-                },
-            }
-            if i != 'Day'
-            else {'field': i, 'width': 120}
-            for i in x.columns
-        ],
-    )
+    det_names: list[str],
+    chart: str,
+    degree: int,
+    *args: float,
+) -> go.Figure:
+    data = DB()['mines']
+    outliers = pd.DataFrame()
+    detectors = {
+        k: (det, arg) for (k, det), arg in zip(available_detectors().items(), args, strict=True)
+    }
+    for mine in mines:
+        if len(det_names) > 0:
+            temp_outliers = pd.concat(
+                [detectors[d_name][0](data[mine], detectors[d_name][1]) for d_name in det_names]
+            ).astype(float)
+            outliers[mine] = temp_outliers.drop_duplicates()
+    outliers['Day'] = data['Day'][outliers.index]
+    return available_plots().get(chart)(data[*mines, 'Day'], outliers, degree)
 
 
 class HomePage(Page):
@@ -48,63 +68,15 @@ class HomePage(Page):
 
     @override
     def render(self) -> html.Div:
+        indicators = DB()['indicators']
         return html.Div(
             [
-                get_upper_row(DB()['mines'], DB()['indicators']),
+                get_upper_row(DB()['mines'], indicators),
                 html.Hr(),
-                dbc.Row(
-                    justify='evenly',
-                    children=[
-                        dbc.Col(
-                            width=6,
-                            children=[
-                                dbc.Stack(
-                                    direction='vertical',
-                                    gap=1,
-                                    children=[
-                                        dcc.Dropdown(
-                                            mines := list(DB()['indicators']['source']),
-                                            mines,
-                                            multi=True,
-                                            closeOnSelect=False,
-                                            id='mine-selection',
-                                        ),
-                                        dcc.Dropdown(
-                                            ['IQR', 'Z-score', 'Distance', 'Grubb'],
-                                            ['IQR', 'Z-score', 'Distance', 'Grubb'],
-                                            multi=True,
-                                            closeOnSelect=False,
-                                            id='detector-selection',
-                                        ),
-                                    ],
-                                ),
-                                html.Div(id='anomalies'),
-                            ],
-                        ),
-                        dbc.Col(
-                            width=6,
-                            children=dbc.Stack(
-                                direction='vertical',
-                                gap=1,
-                                children=[
-                                    dcc.Dropdown(
-                                        mines,
-                                        mines,
-                                        id='mine-selector',
-                                        multi=True,
-                                        closeOnSelect=False,
-                                    ),
-                                    dcc.Dropdown(
-                                        ['IQR', 'Z-score', 'Distance', 'Grubb'],
-                                        ['IQR', 'Z-score', 'Distance', 'Grubb'],
-                                        multi=True,
-                                        closeOnSelect=False,
-                                        id='detector-selector',
-                                    ),
-                                ],
-                            ),
-                        ),
-                    ],
+                get_bottom_row(
+                    list(indicators['source']),
+                    list(available_detectors()),
+                    list(available_plots()),
                 ),
             ],
             className='p-3 bg-light rounded-3',

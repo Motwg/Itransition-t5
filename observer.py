@@ -27,8 +27,6 @@ class DataObserver(metaclass=Singleton):
         self.sheet = None
         self.indicator = ''
 
-    def __repr__(self) -> str:
-        return ' '.join([f'{k}:{v}' for k, v in self.__dict__.items()])
 
     def connect(
         self,

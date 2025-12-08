@@ -1,7 +1,5 @@
 from typing import override
 
-import dash_ag_grid as dag
-import pandas as pd
 from dash import html
 
 from observer import Subscriber
@@ -22,7 +20,6 @@ class Page(Subscriber):
     @override
     def update(self) -> None:
         self.is_new_content = True
-        print(f'updating...{self.path}')
 
     def refresh(self) -> None:
         self.is_new_content = False

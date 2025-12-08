@@ -3,7 +3,11 @@ import pandas as pd
 
 
 def get_aggrid(
-    data: pd.DataFrame, ag_id: str, height: int, first_col_width: int, col_width: int
+    data: pd.DataFrame,
+    ag_id: str,
+    height: int,
+    first_col_width: int,
+    col_width: int,
 ) -> dag.AgGrid:
     return dag.AgGrid(
         id=ag_id,

@@ -1,14 +1,8 @@
 from typing import override
 
-import dash_ag_grid as dag
-from dash import Input, Output, callback, dcc, html
+from dash import html
 
 from pages.page import Page
-
-
-@callback(Output('live-update-text', 'children'), Input('dropdown-selection', 'value'))
-def table(selection: str) -> str:
-    return f'Selection: {selection}'
 
 
 class Charts(Page):

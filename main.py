@@ -2,25 +2,22 @@ import dash_bootstrap_components as dbc
 from dash import Dash, Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 
-from config import obs_config
-from db import DB
+from config import get_config, obs_config
 from layouts.errors import er_404
 from layouts.sidebar import render_sidebar
 from layouts.styles import get_style
 from observer import DataObserver
-from pages.charts import Charts
 from pages.home import HomePage
-from pages.page import Page
 
-app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 content = html.Div(id='page-content', style=get_style('content'))
-pages = {p.path: p for p in [Page('/help'), HomePage('/home'), Charts('/charts')]}
+pages = {p.path: p for p in [HomePage('/home')]}
 app.layout = html.Div(
     [
         dcc.Location(id='url'),
         dcc.Interval(
             id='pull-interval',
-            interval=5000,
+            interval=get_config('reload_time'),
             n_intervals=0,
         ),
         render_sidebar(pages.keys()),
