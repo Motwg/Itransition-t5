@@ -14,7 +14,7 @@ from pages.home import HomePage
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 content = html.Div(id='page-content', style=get_style('content'))
-pages = {p.path: p for p in [HomePage('/dashboard')]}
+pages = {p.path: p for p in [HomePage('/home')]}
 app.layout = html.Div(
     [
         dcc.Location(id='url'),
@@ -62,4 +62,4 @@ if __name__ == '__main__':
     obs = DataObserver()
     for page in pages.values():
         obs.add_subscriber(page)
-    app.run(debug=True)
+    app.run(debug=False)
