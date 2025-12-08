@@ -1,9 +1,12 @@
+from collections.abc import Callable
+from typing import Concatenate, ParamSpec
+
 import dash_bootstrap_components as dbc
 from dash import Dash, Input, Output, State, callback, dcc, html
 from dash.exceptions import PreventUpdate
 
 from config import get_config, obs_config
-from layouts.errors import er_404
+from layouts.errors import err_handler
 from layouts.sidebar import render_sidebar
 from layouts.styles import get_style
 from observer import DataObserver
@@ -11,7 +14,7 @@ from pages.home import HomePage
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
 content = html.Div(id='page-content', style=get_style('content'))
-pages = {p.path: p for p in [HomePage('/home')]}
+pages = {p.path: p for p in [HomePage('/dashboard')]}
 app.layout = html.Div(
     [
         dcc.Location(id='url'),
@@ -36,15 +39,13 @@ async def start_observer(_: str) -> None:
     [State('url', 'pathname'), Input('pull-interval', 'n_intervals')],
     prevent_initial_call='initial_duplicate',
 )
+@err_handler
 def refresh_content(pathname: str, _: int) -> html.Div:
-    try:
-        page = pages[pathname]
-        if page.is_new_content:
-            page.refresh()
-            return page.render()
-        raise PreventUpdate
-    except KeyError:
-        return er_404(pathname)
+    page = pages[pathname]
+    if page.is_new_content:
+        page.refresh()
+        return page.render()
+    raise PreventUpdate
 
 
 @callback(
@@ -52,11 +53,9 @@ def refresh_content(pathname: str, _: int) -> html.Div:
     Input('url', 'pathname'),
     prevent_initial_call='initial_duplicate',
 )
+@err_handler
 def render_page_content(pathname: str) -> html.Div:
-    try:
-        return pages[pathname].render()
-    except KeyError:
-        return er_404(pathname)
+    return pages[pathname].render()
 
 
 if __name__ == '__main__':

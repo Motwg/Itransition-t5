@@ -59,7 +59,7 @@ def find_anomalies(
             ).astype(float)
             outliers[mine] = temp_outliers.drop_duplicates()
     outliers['Day'] = data['Day'][outliers.index]
-    return available_plots().get(chart)(data[*mines, 'Day'], outliers, degree)
+    return available_plots().get(chart)(data[[*mines, 'Day']], outliers, degree)
 
 
 class HomePage(Page):
